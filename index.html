@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#010607">
+  <title>J.A.R.V.I.S</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+<div id="app">
+
+  <header>
+    <div class="brand">J.A.R.V.I.S</div>
+    <div class="subbrand">
+      JUST A RATHER VERY INTELLIGENT SYSTEM
+    </div>
+  </header>
+
+  <div id="orb" class="orb">
+    <div class="ring ring-a"></div>
+    <div class="ring ring-b"></div>
+    <div class="ring ring-c"></div>
+    <div class="ring ring-d"></div>
+
+    <div class="core">
+      <div class="core-light"></div>
+    </div>
+  </div>
+
+  <div id="status">STANDBY</div>
+
+  <div id="chat">
+
+    <div class="jarvis-message">
+      <span class="speaker">JARVIS</span>
+      <span class="message-text">
+        Good day. Systems are online. How may I assist you?
+      </span>
+    </div>
+
+  </div>
+
+  <div class="command-bar">
+
+    <button id="micButton" class="icon-button">
+      🎙️
+    </button>
+
+    <input
+      id="commandInput"
+      type="text"
+      placeholder="Talk to JARVIS or type a command..."
+      autocomplete="off"
+      spellcheck="false"
+    >
+
+    <button id="sendButton" class="send-button">
+      ➤
+    </button>
+
+  </div>
+
+  <div class="tip">
+    TAP THE CORE OR MICROPHONE TO SPEAK
+  </div>
+
+</div>
+
+
+<div id="hiddenScreen">
+
+  <div class="hidden-logo">
+    J.A.R.V.I.S
+  </div>
+
+  <div class="hidden-status">
+    SYSTEMS STANDBY
+  </div>
+
+  <button id="showButton">
+    RESTORE JARVIS
+  </button>
+
+</div>
+
+
+<script src="script.js"></script>
+
+</body>
+</html>
