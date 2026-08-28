@@ -1,84 +1,69 @@
 // =====================================================
-// J.A.R.V.I.S
-// VOICE + CONVERSATION + WEB + CALCULATOR
+// J.A.R.V.I.S — VOICE FIXED VERSION
 // =====================================================
 
-
-const app =
-  document.getElementById("app");
-
-const orb =
-  document.getElementById("orb");
-
-const status =
-  document.getElementById("status");
-
-const chat =
-  document.getElementById("chat");
-
-const input =
-  document.getElementById("commandInput");
-
-const mic =
-  document.getElementById("micButton");
-
-const send =
-  document.getElementById("sendButton");
-
-const hidden =
-  document.getElementById("hiddenScreen");
-
-const show =
-  document.getElementById("showButton");
-
-
-// =====================================================
-// VOICE ENGINE
-// =====================================================
+const app = document.getElementById("app");
+const orb = document.getElementById("orb");
+const status = document.getElementById("status");
+const chat = document.getElementById("chat");
+const input = document.getElementById("commandInput");
+const mic = document.getElementById("micButton");
+const send = document.getElementById("sendButton");
+const hidden = document.getElementById("hiddenScreen");
+const show = document.getElementById("showButton");
 
 let selectedVoice = null;
+let recognition = null;
+let listening = false;
 
+
+// =====================================================
+// LOAD VOICES
+// =====================================================
 
 function loadVoices() {
 
-  if (!window.speechSynthesis) {
-    return;
-  }
+    if (!("speechSynthesis" in window)) return;
 
-  const voices =
-    speechSynthesis.getVoices();
+    const voices = speechSynthesis.getVoices();
 
-  if (!voices.length) {
-    return;
-  }
+    if (!voices.length) return;
 
-
-  // Prefer English voices
-
-  selectedVoice =
-    voices.find(v =>
-      v.lang === "en-IN"
-    ) ||
-
-    voices.find(v =>
-      v.lang === "en-US"
-    ) ||
-
-    voices.find(v =>
-      v.lang.startsWith("en")
-    ) ||
-
-    voices[0];
+    selectedVoice =
+        voices.find(v => v.lang === "en-IN") ||
+        voices.find(v => v.lang === "en-US") ||
+        voices.find(v => v.lang.startsWith("en")) ||
+        voices[0];
 }
-
 
 loadVoices();
 
-
 if ("speechSynthesis" in window) {
+    speechSynthesis.onvoiceschanged = loadVoices;
+}
 
-  speechSynthesis.onvoiceschanged =
-    loadVoices;
+
+// =====================================================
+// VOICE UNLOCK
+// =====================================================
+
+let voiceUnlocked = false;
+
+function unlockVoice() {
+
+    if (!("speechSynthesis" in window)) {
+        return;
+    }
+
+    speechSynthesis.cancel();
+
+    const unlock = new SpeechSynthesisUtterance("");
+
+    unlock.volume = 0;
+
+    speechSynthesis.speak(unlock);
+
+    voiceUnlocked = true;
 }
 
 
@@ -88,80 +73,80 @@ if ("speechSynthesis" in window) {
 
 function speak(text) {
 
-  if (!("speechSynthesis" in window)) {
-    return;
-  }
+    if (!("speechSynthesis" in window)) {
 
+        console.log(
+            "Speech synthesis is not supported."
+        );
 
-  speechSynthesis.cancel();
+        return;
+    }
 
+    if (!voiceUnlocked) {
+        unlockVoice();
+    }
 
-  const utterance =
-    new SpeechSynthesisUtterance(text);
+    speechSynthesis.cancel();
 
+    const utterance =
+        new SpeechSynthesisUtterance(text);
 
-  if (selectedVoice) {
-    utterance.voice =
-      selectedVoice;
-  }
+    loadVoices();
 
+    if (selectedVoice) {
+        utterance.voice = selectedVoice;
+        utterance.lang = selectedVoice.lang;
+    } else {
+        utterance.lang = "en-IN";
+    }
 
-  utterance.lang =
-    selectedVoice?.lang ||
-    "en-IN";
+    utterance.rate = 0.9;
+    utterance.pitch = 0.8;
+    utterance.volume = 1;
 
+    app.classList.remove("listening");
+    app.classList.add("speaking");
 
-  utterance.rate =
-    0.88;
+    status.textContent = "SPEAKING";
 
-  utterance.pitch =
-    0.82;
+    utterance.onend = function () {
 
-  utterance.volume =
-    1;
+        app.classList.remove("speaking");
 
-
-  app.classList.remove(
-    "listening"
-  );
-
-  app.classList.add(
-    "speaking"
-  );
-
-
-  status.textContent =
-    "SPEAKING";
-
-
-  utterance.onend =
-    function() {
-
-      app.classList.remove(
-        "speaking"
-      );
-
-      status.textContent =
-        "STANDBY";
+        status.textContent = "STANDBY";
     };
 
+    utterance.onerror = function (event) {
 
-  utterance.onerror =
-    function() {
+        console.log(
+            "Speech synthesis error:",
+            event
+        );
 
-      app.classList.remove(
-        "speaking"
-      );
+        app.classList.remove("speaking");
 
-      status.textContent =
-        "STANDBY";
+        status.textContent = "STANDBY";
     };
 
-
-  speechSynthesis.speak(
-    utterance
-  );
+    speechSynthesis.speak(utterance);
 }
+
+
+// =====================================================
+// FIRST USER TOUCH
+// =====================================================
+
+document.addEventListener(
+    "touchstart",
+    function () {
+
+        unlockVoice();
+
+    },
+    {
+        once: true
+    }
+);
 
 
 // =====================================================
@@ -170,48 +155,48 @@ function speak(text) {
 
 function addUserMessage(text) {
 
-  const box =
-    document.createElement("div");
+    const box =
+        document.createElement("div");
 
-  box.className =
-    "user-message";
+    box.className =
+        "user-message";
 
-  box.innerHTML =
-    `<span class="speaker">YOU</span>
-     ${escapeHTML(text)}`;
+    box.innerHTML =
+        `<span class="speaker">YOU</span>
+        ${escapeHTML(text)}`;
 
-  chat.appendChild(box);
+    chat.appendChild(box);
 
-  chat.scrollTop =
-    chat.scrollHeight;
+    chat.scrollTop =
+        chat.scrollHeight;
 }
 
 
 function addJarvisMessage(text) {
 
-  const box =
-    document.createElement("div");
+    const box =
+        document.createElement("div");
 
-  box.className =
-    "jarvis-message";
+    box.className =
+        "jarvis-message";
 
-  box.innerHTML =
-    `<span class="speaker">JARVIS</span>
-     ${escapeHTML(text)}`;
+    box.innerHTML =
+        `<span class="speaker">JARVIS</span>
+        ${escapeHTML(text)}`;
 
-  chat.appendChild(box);
+    chat.appendChild(box);
 
-  chat.scrollTop =
-    chat.scrollHeight;
+    chat.scrollTop =
+        chat.scrollHeight;
 }
 
 
 function escapeHTML(text) {
 
-  return text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
+    return String(text)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
 }
 
 
@@ -221,105 +206,99 @@ function escapeHTML(text) {
 
 function respond(text) {
 
-  addJarvisMessage(text);
+    addJarvisMessage(text);
 
-  speak(text);
+    speak(text);
 }
 
 
 // =====================================================
-// SEARCH GOOGLE
+// GOOGLE SEARCH
 // =====================================================
 
 function searchGoogle(query) {
 
-  query =
-    query.trim();
+    query = query.trim();
 
-  if (!query) {
+    if (!query) {
 
-    respond(
-      "Please tell me what you would like me to search."
+        respond(
+            "Please tell me what you would like me to search."
+        );
+
+        return;
+    }
+
+    addJarvisMessage(
+        "Searching Google for " +
+        query +
+        "."
     );
 
-    return;
-  }
+    speak(
+        "Searching Google for " +
+        query
+    );
 
+    const url =
+        "https://www.google.com/search?q=" +
+        encodeURIComponent(query);
 
-  addJarvisMessage(
-    "Searching Google for " +
-    query + "."
-  );
+    setTimeout(
+        function () {
 
+            window.location.assign(url);
 
-  speak(
-    "Searching Google for " +
-    query
-  );
-
-
-  const url =
-    "https://www.google.com/search?q=" +
-    encodeURIComponent(query);
-
-
-  // Give the voice a moment to start.
-
-  setTimeout(
-    function() {
-
-      window.location.assign(url);
-
-    },
-    700
-  );
+        },
+        900
+    );
 }
 
 
 // =====================================================
-// WEBSITE LIST
+// WEBSITES
 // =====================================================
 
 const websites = {
 
-  google:
-    "https://www.google.com",
+    google:
+        "https://www.google.com",
 
-  youtube:
-    "https://www.youtube.com",
+    youtube:
+        "https://www.youtube.com",
 
-  chatgpt:
-    "https://chatgpt.com",
+    chatgpt:
+        "https://chatgpt.com",
 
-  github:
-    "https://github.com",
+    github:
+        "https://github.com",
 
-  instagram:
-    "https://www.instagram.com",
+    instagram:
+        "https://www.instagram.com",
 
-  facebook:
-    "https://www.facebook.com",
+    facebook:
+        "https://www.facebook.com",
 
-  wikipedia:
-    "https://www.wikipedia.org",
+    wikipedia:
+        "https://www.wikipedia.org",
 
-  gmail:
-    "https://mail.google.com",
+    gmail:
+        "https://mail.google.com",
 
-  reddit:
-    "https://www.reddit.com",
+    reddit:
+        "https://www.reddit.com",
 
-  nasa:
-    "https://www.nasa.gov",
+    nasa:
+        "https://www.nasa.gov",
 
-  amazon:
-    "https://www.amazon.in",
+    amazon:
+        "https://www.amazon.in",
 
-  pw:
-    "https://www.pw.live",
+    pw:
+        "https://www.pw.live",
 
-  "physics wallah":
-    "https://www.pw.live"
+    "physics wallah":
+        "https://www.pw.live"
 };
 
 
@@ -329,131 +308,100 @@ const websites = {
 
 function openWebsite(name) {
 
-  name =
-    name.trim();
+    name = name.trim();
 
+    if (!name) {
 
-  if (!name) {
-
-    respond(
-      "Which website would you like me to open?"
-    );
-
-    return;
-  }
-
-
-  const key =
-    name.toLowerCase();
-
-
-  // Known website
-
-  if (websites[key]) {
-
-    addJarvisMessage(
-      "Opening " +
-      name +
-      "."
-    );
-
-
-    speak(
-      "Opening " +
-      name
-    );
-
-
-    setTimeout(
-      function() {
-
-        window.location.assign(
-          websites[key]
+        respond(
+            "Which website would you like me to open?"
         );
 
-      },
-      700
-    );
+        return;
+    }
 
-    return;
-  }
-
-
-  // Direct URL
-
-  let url =
-    name;
+    const key =
+        name.toLowerCase();
 
 
-  if (
-    !url.startsWith("http://") &&
-    !url.startsWith("https://")
-  ) {
+    if (websites[key]) {
 
-    url =
-      "https://" + url;
-  }
+        addJarvisMessage(
+            "Opening " +
+            name +
+            "."
+        );
+
+        speak(
+            "Opening " +
+            name
+        );
+
+        setTimeout(
+            function () {
+
+                window.location.assign(
+                    websites[key]
+                );
+
+            },
+            900
+        );
+
+        return;
+    }
 
 
-  if (
-    name.includes(".") ||
-    name.startsWith("http://") ||
-    name.startsWith("https://")
-  ) {
+    let url = name;
 
-    addJarvisMessage(
-      "Opening " +
-      name +
-      "."
-    );
+    if (
+        !url.startsWith("http://") &&
+        !url.startsWith("https://")
+    ) {
+
+        url =
+            "https://" + url;
+    }
+
+
+    if (
+        name.includes(".") ||
+        name.startsWith("http://") ||
+        name.startsWith("https://")
+    ) {
+
+        addJarvisMessage(
+            "Opening " +
+            name +
+            "."
+        );
+
+        speak(
+            "Opening " +
+            name
+        );
+
+        setTimeout(
+            function () {
+
+                window.location.assign(url);
+
+            },
+            900
+        );
+
+        return;
+    }
 
 
     speak(
-      "Opening " +
-      name
+        "I will search for " +
+        name
     );
 
-
-    setTimeout(
-      function() {
-
-        window.location.assign(url);
-
-      },
-      700
-    );
-
-    return;
-  }
-
-
-  // Unknown website
-
-  addJarvisMessage(
-    "I will find " +
-    name +
-    " for you."
-  );
-
-
-  speak(
-    "I will find " +
-    name +
-    " for you."
-  );
-
-
-  setTimeout(
-    function() {
-
-      searchGoogle(
+    searchGoogle(
         name +
         " official website"
-      );
-
-    },
-    700
-  );
+    );
 }
 
 
@@ -463,122 +411,114 @@ function openWebsite(name) {
 
 function calculator(text) {
 
-  let expression =
-    text.toLowerCase();
+    let expression =
+        text.toLowerCase();
 
 
-  // Percentage
-
-  const percent =
-    expression.match(
-      /([0-9.]+)\s*%\s*(?:of)\s*([0-9.]+)/
-    );
+    const percent =
+        expression.match(
+            /([0-9.]+)\s*%\s*of\s*([0-9.]+)/
+        );
 
 
-  if (percent) {
+    if (percent) {
 
-    const a =
-      Number(percent[1]);
+        const a =
+            Number(percent[1]);
 
-    const b =
-      Number(percent[2]);
+        const b =
+            Number(percent[2]);
 
-    const result =
-      (a / 100) * b;
+        const result =
+            (a / 100) * b;
 
+        respond(
+            `${a} percent of ${b} is ${result}.`
+        );
 
-    respond(
-      `${a} percent of ${b} is ${result}.`
-    );
-
-    return;
-  }
-
-
-  // Square root
-
-  const sqrt =
-    expression.match(
-      /square root of\s+([0-9.]+)/
-    );
+        return;
+    }
 
 
-  if (sqrt) {
-
-    const number =
-      Number(sqrt[1]);
-
-    const result =
-      Math.sqrt(number);
+    const sqrt =
+        expression.match(
+            /square root of\s+([0-9.]+)/
+        );
 
 
-    respond(
-      `The square root of ${number} is ${result}.`
-    );
+    if (sqrt) {
 
-    return;
-  }
+        const number =
+            Number(sqrt[1]);
 
+        const result =
+            Math.sqrt(number);
 
-  // Power
+        respond(
+            `The square root of ${number} is ${result}.`
+        );
 
-  expression =
-    expression
-      .replace(
-        /to the power of/gi,
-        "**"
-      )
-      .replace(
-        /to the power/gi,
-        "**"
-      );
+        return;
+    }
 
 
-  // Spoken operators
-
-  expression =
-    expression
-      .replace(/times/gi, "*")
-      .replace(/multiplied by/gi, "*")
-      .replace(/plus/gi, "+")
-      .replace(/minus/gi, "-")
-      .replace(/divided by/gi, "/");
-
-
-  // Security check
-
-  if (
-    !/^[0-9+\-*/().%\s]+$/
-      .test(expression)
-  ) {
-
-    searchGoogle(text);
-
-    return;
-  }
-
-
-  try {
-
-    const result =
-      Function(
-        '"use strict"; return (' +
-        expression +
-        ')'
-      )();
+    expression =
+        expression
+            .replace(
+                /to the power of/gi,
+                "**"
+            )
+            .replace(
+                /times/gi,
+                "*"
+            )
+            .replace(
+                /multiplied by/gi,
+                "*"
+            )
+            .replace(
+                /plus/gi,
+                "+"
+            )
+            .replace(
+                /minus/gi,
+                "-"
+            )
+            .replace(
+                /divided by/gi,
+                "/"
+            );
 
 
-    respond(
-      `${expression} equals ${result}.`
-    );
+    if (
+        !/^[0-9+\-*/().%\s]+$/.test(
+            expression
+        )
+    ) {
 
-  }
+        searchGoogle(text);
 
-  catch {
+        return;
+    }
 
-    searchGoogle(text);
 
-  }
+    try {
+
+        const result =
+            Function(
+                '"use strict"; return (' +
+                expression +
+                ')'
+            )();
+
+        respond(
+            `${expression} equals ${result}.`
+        );
+
+    } catch {
+
+        searchGoogle(text);
+    }
 }
 
 
@@ -588,19 +528,18 @@ function calculator(text) {
 
 function tellTime() {
 
-  const time =
-    new Date().toLocaleTimeString(
-      [],
-      {
-        hour: "numeric",
-        minute: "2-digit"
-      }
+    const time =
+        new Date().toLocaleTimeString(
+            [],
+            {
+                hour: "numeric",
+                minute: "2-digit"
+            }
+        );
+
+    respond(
+        `The current time is ${time}.`
     );
-
-
-  respond(
-    `The current time is ${time}.`
-  );
 }
 
 
@@ -610,135 +549,120 @@ function tellTime() {
 
 function tellDate() {
 
-  const date =
-    new Date().toLocaleDateString(
-      [],
-      {
-        weekday: "long",
-        month: "long",
-        day: "numeric",
-        year: "numeric"
-      }
+    const date =
+        new Date().toLocaleDateString(
+            [],
+            {
+                weekday: "long",
+                month: "long",
+                day: "numeric",
+                year: "numeric"
+            }
+        );
+
+    respond(
+        `Today is ${date}.`
     );
-
-
-  respond(
-    `Today is ${date}.`
-  );
 }
 
 
 // =====================================================
-// BASIC CONVERSATION
+// CONVERSATION
 // =====================================================
 
 function conversationEngine(text) {
 
-  const t =
-    text.toLowerCase().trim();
+    const t =
+        text.toLowerCase().trim();
 
 
-  if (
-    /^(hi|hello|hey)$/.test(t)
-  ) {
+    if (
+        /^(hi|hello|hey)$/.test(t)
+    ) {
 
-    respond(
-      "Hello. It's good to hear from you. How can I assist you?"
-    );
+        respond(
+            "Hello. It's good to hear you. How may I assist you?"
+        );
 
-    return true;
-  }
-
-
-  if (
-    t.includes("how are you")
-  ) {
-
-    respond(
-      "All systems are operating normally. Thank you for asking."
-    );
-
-    return true;
-  }
+        return true;
+    }
 
 
-  if (
-    t.includes("your name")
-  ) {
+    if (
+        t.includes("how are you")
+    ) {
 
-    respond(
-      "I am JARVIS, your virtual assistant."
-    );
+        respond(
+            "All systems are operating normally."
+        );
 
-    return true;
-  }
-
-
-  if (
-    t.includes("what can you do")
-  ) {
-
-    respond(
-      "I can converse with you, listen to voice commands, search Google, open websites, calculate numbers, tell you the time and date, and control this JARVIS interface."
-    );
-
-    return true;
-  }
+        return true;
+    }
 
 
-  if (
-    t.includes("thank you") ||
-    t === "thanks"
-  ) {
+    if (
+        t.includes("your name")
+    ) {
 
-    respond(
-      "You're welcome. Always happy to help."
-    );
+        respond(
+            "I am JARVIS, your virtual assistant."
+        );
 
-    return true;
-  }
-
-
-  if (
-    t.includes("who made you")
-  ) {
-
-    respond(
-      "I am a browser-based JARVIS assistant designed to help you."
-    );
-
-    return true;
-  }
+        return true;
+    }
 
 
-  if (
-    t === "bye" ||
-    t === "goodbye"
-  ) {
+    if (
+        t.includes("what can you do")
+    ) {
 
-    respond(
-      "Goodbye. I'll be here when you need me."
-    );
+        respond(
+            "I can talk with you, listen to voice commands, search Google, open websites, perform calculations, tell you the time and date, and control this interface."
+        );
 
-    return true;
-  }
-
-
-  if (
-    t === "good" ||
-    t === "nice" ||
-    t === "great"
-  ) {
-
-    respond(
-      "Excellent. What would you like to do next?"
-    );
-
-    return true;
-  }
+        return true;
+    }
 
 
-  return false;
+    if (
+        t.includes("thank you") ||
+        t === "thanks"
+    ) {
+
+        respond(
+            "You're welcome."
+        );
+
+        return true;
+    }
+
+
+    if (
+        t.includes("who made you")
+    ) {
+
+        respond(
+            "I am a browser-based JARVIS assistant."
+        );
+
+        return true;
+    }
+
+
+    if (
+        t === "bye" ||
+        t === "goodbye"
+    ) {
+
+        respond(
+            "Goodbye. I'll be here when you need me."
+        );
+
+        return true;
+    }
+
+
+    return false;
 }
 
 
@@ -748,13 +672,13 @@ function conversationEngine(text) {
 
 function hideJarvis() {
 
-  speechSynthesis.cancel();
+    speechSynthesis.cancel();
 
-  app.style.display =
-    "none";
+    app.style.display =
+        "none";
 
-  hidden.style.display =
-    "flex";
+    hidden.style.display =
+        "flex";
 }
 
 
@@ -764,234 +688,210 @@ function hideJarvis() {
 
 function showJarvis() {
 
-  hidden.style.display =
-    "none";
+    hidden.style.display =
+        "none";
 
-  app.style.display =
-    "block";
+    app.style.display =
+        "block";
 
-  respond(
-    "JARVIS systems restored."
-  );
+    respond(
+        "JARVIS systems restored."
+    );
 }
 
 
 // =====================================================
-// COMMAND PROCESSOR
+// COMMAND ENGINE
 // =====================================================
 
 function executeCommand(raw) {
 
-  let text =
-    raw.trim();
+    let text =
+        raw.trim();
 
-  if (!text) return;
+    if (!text) return;
 
 
-  addUserMessage(text);
+    addUserMessage(text);
 
 
-  // Remove wake word
+    text =
+        text.replace(
+            /^hey\s+jarvis[\s,]*/i,
+            ""
+        );
 
-  text =
-    text.replace(
-      /^hey\s+jarvis[\s,]*/i,
-      ""
-    );
+    text =
+        text.replace(
+            /^jarvis[\s,]*/i,
+            ""
+        );
 
-  text =
-    text.replace(
-      /^jarvis[\s,]*/i,
-      ""
-    );
 
+    const lower =
+        text.toLowerCase().trim();
 
-  const lower =
-    text.toLowerCase().trim();
 
+    if (!lower) {
 
-  if (!lower) {
+        respond(
+            "Yes. I'm listening."
+        );
 
-    respond(
-      "Yes. I'm listening."
-    );
+        return;
+    }
 
-    return;
-  }
 
+    // OPEN
 
-  // OPEN
+    if (
+        lower.startsWith("open ")
+    ) {
 
-  if (
-    lower.startsWith("open ")
-  ) {
+        openWebsite(
+            text.substring(5)
+        );
 
-    openWebsite(
-      text.substring(5)
-    );
+        return;
+    }
 
-    return;
-  }
 
+    // SEARCH GOOGLE
 
-  // SEARCH GOOGLE
+    if (
+        lower.startsWith(
+            "search google "
+        )
+    ) {
 
-  if (
-    lower.startsWith(
-      "search google "
-    )
-  ) {
+        searchGoogle(
+            text.substring(14)
+        );
 
-    searchGoogle(
-      text.substring(14)
-    );
+        return;
+    }
 
-    return;
-  }
 
+    // SEARCH
 
-  // SEARCH
+    if (
+        lower.startsWith("search ")
+    ) {
 
-  if (
-    lower.startsWith("search ")
-  ) {
+        searchGoogle(
+            text.substring(7)
+        );
 
-    searchGoogle(
-      text.substring(7)
-    );
+        return;
+    }
 
-    return;
-  }
 
+    // CALCULATE
 
-  // CALCULATE
+    if (
+        lower.startsWith("calculate ")
+    ) {
 
-  if (
-    lower.startsWith("calculate ")
-  ) {
+        calculator(
+            text.substring(10)
+        );
 
-    calculator(
-      text.substring(10)
-    );
+        return;
+    }
 
-    return;
-  }
 
+    // TIME
 
-  // TIME
+    if (
+        lower === "time" ||
+        lower.includes("what time is it")
+    ) {
 
-  if (
-    lower === "time" ||
-    lower.includes("what time is it")
-  ) {
+        tellTime();
 
-    tellTime();
+        return;
+    }
 
-    return;
-  }
 
+    // DATE
 
-  // DATE
+    if (
+        lower === "date" ||
+        lower.includes("what is today's date") ||
+        lower.includes("what day is it")
+    ) {
 
-  if (
-    lower === "date" ||
-    lower.includes("what is today's date") ||
-    lower.includes("what day is it")
-  ) {
+        tellDate();
 
-    tellDate();
+        return;
+    }
 
-    return;
-  }
 
+    // BACK
 
-  // BACK
+    if (
+        lower === "go back" ||
+        lower === "back"
+    ) {
 
-  if (
-    lower === "go back" ||
-    lower === "back"
-  ) {
+        speak("Going back.");
 
-    respond(
-      "Going back."
-    );
+        setTimeout(
+            () => history.back(),
+            700
+        );
 
+        return;
+    }
 
-    setTimeout(
-      function() {
-        history.back();
-      },
-      600
-    );
 
-    return;
-  }
+    // HIDE
 
+    if (
+        lower === "disappear" ||
+        lower === "go away" ||
+        lower === "hide yourself"
+    ) {
 
-  // DISAPPEAR
+        hideJarvis();
 
-  if (
-    lower === "disappear" ||
-    lower === "go away" ||
-    lower === "hide yourself"
-  ) {
+        return;
+    }
 
-    hideJarvis();
 
-    return;
-  }
+    // STOP
 
+    if (
+        lower === "stop" ||
+        lower === "stop speaking"
+    ) {
 
-  // SHOW
+        speechSynthesis.cancel();
 
-  if (
-    lower === "show yourself" ||
-    lower === "come back"
-  ) {
+        app.classList.remove(
+            "speaking"
+        );
 
-    showJarvis();
+        status.textContent =
+            "STANDBY";
 
-    return;
-  }
+        return;
+    }
 
 
-  // STOP
+    // CONVERSATION
 
-  if (
-    lower === "stop" ||
-    lower === "stop speaking"
-  ) {
+    if (
+        conversationEngine(text)
+    ) {
 
-    speechSynthesis.cancel();
+        return;
+    }
 
-    app.classList.remove(
-      "speaking"
-    );
 
-    status.textContent =
-      "STANDBY";
+    // UNKNOWN QUESTION
 
-    addJarvisMessage(
-      "Speech stopped."
-    );
-
-    return;
-  }
-
-
-  // CONVERSATION
-
-  if (
-    conversationEngine(text)
-  ) {
-
-    return;
-  }
-
-
-  // EVERYTHING ELSE = GOOGLE
-
-  searchGoogle(text);
+    searchGoogle(text);
 }
 
 
@@ -1000,19 +900,21 @@ function executeCommand(raw) {
 // =====================================================
 
 send.addEventListener(
-  "click",
-  function() {
+    "click",
+    function () {
 
-    const text =
-      input.value.trim();
+        unlockVoice();
 
-    if (!text) return;
+        const text =
+            input.value.trim();
 
-    executeCommand(text);
+        if (!text) return;
 
-    input.value = "";
+        executeCommand(text);
 
-  }
+        input.value = "";
+
+    }
 );
 
 
@@ -1021,20 +923,20 @@ send.addEventListener(
 // =====================================================
 
 input.addEventListener(
-  "keydown",
-  function(event) {
+    "keydown",
+    function (event) {
 
-    if (
-      event.key === "Enter"
-    ) {
+        if (event.key === "Enter") {
 
-      event.preventDefault();
+            event.preventDefault();
 
-      send.click();
+            unlockVoice();
+
+            send.click();
+
+        }
 
     }
-
-  }
 );
 
 
@@ -1043,179 +945,150 @@ input.addEventListener(
 // =====================================================
 
 const SpeechRecognition =
-  window.SpeechRecognition ||
-  window.webkitSpeechRecognition;
-
-
-let recognition =
-  null;
-
-let listening =
-  false;
+    window.SpeechRecognition ||
+    window.webkitSpeechRecognition;
 
 
 if (SpeechRecognition) {
 
-  recognition =
-    new SpeechRecognition();
+    recognition =
+        new SpeechRecognition();
+
+    recognition.lang =
+        "en-IN";
+
+    recognition.continuous =
+        false;
+
+    recognition.interimResults =
+        true;
 
 
-  recognition.lang =
-    "en-IN";
+    recognition.onstart =
+        function () {
+
+            listening = true;
+
+            unlockVoice();
+
+            app.classList.remove(
+                "speaking"
+            );
+
+            app.classList.add(
+                "listening"
+            );
+
+            status.textContent =
+                "LISTENING";
+
+            input.value = "";
+
+        };
 
 
-  recognition.continuous =
-    false;
+    recognition.onresult =
+        function (event) {
+
+            let transcript = "";
 
 
-  recognition.interimResults =
-    true;
+            for (
+                let i = event.resultIndex;
+                i < event.results.length;
+                i++
+            ) {
+
+                transcript +=
+                    event.results[i][0]
+                        .transcript;
+            }
 
 
-  recognition.onstart =
-    function() {
-
-      listening = true;
-
-      app.classList.remove(
-        "speaking"
-      );
-
-      app.classList.add(
-        "listening"
-      );
-
-      status.textContent =
-        "LISTENING";
-
-      input.value = "";
-
-    };
+            transcript =
+                transcript.trim();
 
 
-  recognition.onresult =
-    function(event) {
+            // SPEECH APPEARS IN BOX
 
-      let transcript =
-        "";
-
-
-      for (
-        let i = event.resultIndex;
-        i < event.results.length;
-        i++
-      ) {
-
-        transcript +=
-          event.results[i][0]
-            .transcript;
-      }
+            input.value =
+                transcript;
 
 
-      transcript =
-        transcript.trim();
+            const result =
+                event.results[
+                    event.results.length - 1
+                ];
 
 
-      // LIVE SPEECH → TEXT BOX
+            // AUTOMATICALLY EXECUTE
 
-      input.value =
-        transcript;
+            if (
+                result.isFinal &&
+                transcript
+            ) {
 
+                executeCommand(
+                    transcript
+                );
 
-      const lastResult =
-        event.results[
-          event.results.length - 1
-        ];
+                input.value = "";
 
+            }
 
-      // FINAL SPEECH
-      // AUTOMATICALLY EXECUTES
-
-      if (
-        lastResult.isFinal &&
-        transcript
-      ) {
-
-        executeCommand(
-          transcript
-        );
-
-        input.value = "";
-
-      }
-
-    };
+        };
 
 
-  recognition.onerror =
-    function(event) {
+    recognition.onerror =
+        function (event) {
 
-      console.log(
-        "Speech error:",
-        event.error
-      );
+            console.log(
+                "Recognition error:",
+                event.error
+            );
 
+            listening = false;
 
-      app.classList.remove(
-        "listening"
-      );
+            app.classList.remove(
+                "listening"
+            );
 
-      status.textContent =
-        "STANDBY";
+            status.textContent =
+                "STANDBY";
 
+            if (
+                event.error ===
+                "not-allowed"
+            ) {
 
-      if (
-        event.error ===
-        "not-allowed"
-      ) {
+                addJarvisMessage(
+                    "Please allow microphone access for JARVIS."
+                );
+            }
 
-        addJarvisMessage(
-          "Microphone permission is blocked. Please allow microphone access for JARVIS."
-        );
-
-      }
-
-      else if (
-        event.error ===
-        "no-speech"
-      ) {
-
-        addJarvisMessage(
-          "I didn't hear anything. Please try again."
-        );
-
-      }
-
-      else {
-
-        addJarvisMessage(
-          "I couldn't process the voice command."
-        );
-      }
-
-    };
+        };
 
 
-  recognition.onend =
-    function() {
+    recognition.onend =
+        function () {
 
-      listening = false;
+            listening = false;
 
-      app.classList.remove(
-        "listening"
-      );
+            app.classList.remove(
+                "listening"
+            );
 
-      if (
-        !app.classList.contains(
-          "speaking"
-        )
-      ) {
+            if (
+                !app.classList.contains(
+                    "speaking"
+                )
+            ) {
 
-        status.textContent =
-          "STANDBY";
-      }
+                status.textContent =
+                    "STANDBY";
+            }
 
-    };
+        };
 
 }
 
@@ -1226,46 +1099,36 @@ if (SpeechRecognition) {
 
 function startListening() {
 
-  if (!recognition) {
-
-    addJarvisMessage(
-      "Voice recognition is not available in this browser."
-    );
-
-    return;
-  }
+    unlockVoice();
 
 
-  if (listening) {
+    if (!recognition) {
 
-    recognition.stop();
+        addJarvisMessage(
+            "Voice recognition isn't supported by this browser."
+        );
 
-    return;
-  }
-
-
-  try {
-
-    // Make sure speech engine is ready
-
-    if (
-      "speechSynthesis" in window
-    ) {
-
-      speechSynthesis.cancel();
-
+        return;
     }
 
 
-    recognition.start();
+    if (listening) {
 
-  }
+        recognition.stop();
 
-  catch(error) {
+        return;
+    }
 
-    console.log(error);
 
-  }
+    try {
+
+        recognition.start();
+
+    } catch (error) {
+
+        console.log(error);
+
+    }
 }
 
 
@@ -1274,8 +1137,8 @@ function startListening() {
 // =====================================================
 
 mic.addEventListener(
-  "click",
-  startListening
+    "click",
+    startListening
 );
 
 
@@ -1284,8 +1147,8 @@ mic.addEventListener(
 // =====================================================
 
 orb.addEventListener(
-  "click",
-  startListening
+    "click",
+    startListening
 );
 
 
@@ -1294,15 +1157,15 @@ orb.addEventListener(
 // =====================================================
 
 show.addEventListener(
-  "click",
-  showJarvis
+    "click",
+    showJarvis
 );
 
 
 // =====================================================
-// STARTUP
+// READY
 // =====================================================
 
 console.log(
-  "J.A.R.V.I.S online."
+    "J.A.R.V.I.S voice system online."
 );
